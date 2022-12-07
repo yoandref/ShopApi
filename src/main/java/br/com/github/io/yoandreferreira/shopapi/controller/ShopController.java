@@ -4,6 +4,7 @@ import br.com.github.io.yoandreferreira.shopapi.dto.ShopDTO;
 import br.com.github.io.yoandreferreira.shopapi.model.Shop;
 import br.com.github.io.yoandreferreira.shopapi.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
+import br.com.github.io.yoandreferreira.shopapi.events.KafkaClient;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -15,9 +16,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/shop")
 @RequiredArgsConstructor
 public class ShopController {
-
     private final ShopRepository shopRepository;
-
+    private final KafkaClient kafkaClient;
     @GetMapping
     public List<ShopDTO> getShop() {
         return shopRepository.findAll().stream().map(ShopDTO::convert).collect(Collectors.toList());
@@ -31,7 +31,9 @@ public class ShopController {
 
         Shop shop = Shop.convert(shopDTO);
         shop.getItems().forEach(shopItem -> shopItem.setShop(shop));
-        return ShopDTO.convert(shopRepository.save(shop));
+        shopDTO = ShopDTO.convert(shopRepository.save(shop));
+        kafkaClient.sendMessage(shopDTO);
+        return shopDTO;
     }
 
 }
